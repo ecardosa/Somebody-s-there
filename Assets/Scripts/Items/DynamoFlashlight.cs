@@ -20,6 +20,8 @@ public class DynamoFlashlight : MonoBehaviour
 
     public TextMeshProUGUI batteryText;
 
+    [HideInInspector] public bool inputRechargeHeld = false;
+
     /**Animació llanterna*/
     private Quaternion initialCrankRotation;
     private float currentCrankAngle = 0f;
@@ -68,7 +70,8 @@ public class DynamoFlashlight : MonoBehaviour
 
     void Update()
     {
-        /*if (Input.GetKey(rechargeKey))
+        // 1. Utilitzem la variable controlada pel PlayerController en lloc de l'Input
+        if (inputRechargeHeld)
         {
             if (!isRecharging && currentBatteryPercentage < 100f)
             {
@@ -84,8 +87,9 @@ public class DynamoFlashlight : MonoBehaviour
                 StopRecharging();
                 tempsPrementBoto = 0f; 
             }
-        }*/
+        }
 
+        // 2. La resta de l'Update és EXACTAMENT el teu original
         if (isRecharging)
         {
             RechargeBattery();
@@ -119,7 +123,8 @@ public class DynamoFlashlight : MonoBehaviour
                 TurnOffLight();
             }
 
-            HandleInput();
+            // ATENCIÓ: Hem esborrat "HandleInput();" d'aquí sota. 
+            // Ja no el cridem des de l'Update.
 
             if (isOn)
             {
@@ -162,9 +167,9 @@ public class DynamoFlashlight : MonoBehaviour
         }
     }
 
-    void HandleInput()
+    public void ToggleLightInput()
     {
-        if (Input.GetKeyDown(toggleKey) && !isRecharging)
+        if (!isRecharging)
         {
             wantsToBeOn = !wantsToBeOn; 
 

@@ -366,31 +366,21 @@ public class HorrorPlayerController : MonoBehaviour
     /// </summary>
     private void HandleDynamoInput()
     {
-        if (flashlight == null)
-        {
-            Debug.LogWarning("HorrorPlayerController: No hi ha referència a DynamoFlashlight!");
-            return;
-        }
+        if (flashlight == null) return;
 
-        // --- ENCEDRE / APAGAR (Comportament Toggle) ---
-        // Utilitzem F com estipula l'script de la llanterna original, o pots posar la variable dynamoRechargeKey
+        // 1. Encenem/Apaguem (Toggle) utilitzant el mètode públic
         if (Input.GetKeyDown(KeyCode.F))
         {
-            flashlight.ToggleLight();
+            flashlight.ToggleLightInput();
         }
 
-        // --- RECARREGAR (Mantenir premut R o Click esquerre) ---
+        // 2. Llegim l'estat dels botons de recàrrega (R o Click esquerre)
         bool pressingRecharge = Input.GetKey(KeyCode.R);
         bool pressingLeftClick = allowLeftClickRecharge && Input.GetMouseButton(0);
 
-        if (pressingRecharge || pressingLeftClick)
-        {
-            flashlight.StartRecharging();
-        }
-        else if (flashlight.IsRecharging()) // Si deixem de prémer i estava recarregant
-        {
-            flashlight.StopRechargingManual();
-        }
+        // 3. Li diem a DynamoFlashlight si estem mantenint apretat
+        // (La llanterna s'encarregarà de fer tota la seva lògica original a dins del seu propi Update)
+        flashlight.inputRechargeHeld = (pressingRecharge || pressingLeftClick);
     }
 }
 
