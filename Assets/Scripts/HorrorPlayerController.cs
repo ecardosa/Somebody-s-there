@@ -2,7 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// First-person horror controller designed for heavy, deliberate movement,
-/// conditional sprinting during chases, procedural head-bobbing, and dynamo flashlight integration.
+/// conditional sprinting during chases, procedural head-bobbing, dynamo flashlight integration,
+/// and right-hand object pickup/interaction.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class HorrorPlayerController : MonoBehaviour
@@ -99,11 +100,33 @@ public class HorrorPlayerController : MonoBehaviour
     [Tooltip("Reference to the external DynamoFlashlight script.")]
     public DynamoFlashlight flashlight;
 
-    [Tooltip("Key cranked repeatedly to charge the flashlight.")]
-    public KeyCode dynamoRechargeKey = KeyCode.F;
+    [Tooltip("Key toggled to turn the flashlight on/off.")]
+    public KeyCode toggleLightKey = KeyCode.F;
+
+    [Tooltip("Key held down to crank and recharge the flashlight.")]
+    public KeyCode rechargeKey = KeyCode.R;
 
     [Tooltip("Also allow Left Mouse Button to crank the flashlight.")]
     public bool allowLeftClickRecharge = true;
+
+    [Header("Object Interaction (Right Hand)")]
+    [Tooltip("Camera used for casting the interaction ray. Defaults to Camera.main if left empty.")]
+    public Camera playerCamera;
+
+    [Tooltip("Empty Transform on the right side of the camera where picked-up items are held.")]
+    public Transform rightHandHoldPoint;
+
+    [Tooltip("Maximum distance from which the player can pick up objects.")]
+    public float interactionDistance = 3.0f;
+
+    [Tooltip("Layers that the interaction raycast can hit.")]
+    public LayerMask interactionLayerMask = ~0;
+
+    [Tooltip("Key pressed to pick up or drop an item.")]
+    public KeyCode interactKey = KeyCode.E;
+
+    [Tooltip("Read-only reference to the currently held item.")]
+    public PickupItem currentHeldItem;
 
     // --- Internal Private Variables ---
     private CharacterController controller;
@@ -134,6 +157,11 @@ public class HorrorPlayerController : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
 
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+        }
+
         // Lock and hide the cursor for first-person immersion
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -157,6 +185,7 @@ public class HorrorPlayerController : MonoBehaviour
         HandleCrouchState();
         HandleMovement();
         HandleHeadBob();
+        HandleItemInteraction();
         HandleDynamoInput();
     }
 
@@ -173,14 +202,11 @@ public class HorrorPlayerController : MonoBehaviour
         targetYaw += mouseX;
         targetPitch -= mouseY;
 
-        // Clamp pitch so the player can't flip their neck upside down
         targetPitch = Mathf.Clamp(targetPitch, maxLookDownAngle, maxLookUpAngle);
 
-        // Smoothly interpolate current rotation toward target rotation
         currentYaw = Mathf.SmoothDamp(currentYaw, targetYaw, ref yawVelocity, cameraSmoothTime);
         currentPitch = Mathf.SmoothDamp(currentPitch, targetPitch, ref pitchVelocity, cameraSmoothTime);
 
-        // Apply yaw to the player body and pitch to the camera pivot
         transform.rotation = Quaternion.Euler(0f, currentYaw, 0f);
         cameraPivot.localRotation = Quaternion.Euler(currentPitch, 0f, 0f);
     }
@@ -202,12 +228,11 @@ public class HorrorPlayerController : MonoBehaviour
             wantsToCrouch = Input.GetKey(crouchKey);
         }
 
-        // If the player wants to stand up, verify there isn't a low ceiling blocking them
         if (!wantsToCrouch && isCrouching)
         {
             if (!CanStandUp())
             {
-                isCrouching = true; // Forced to stay crouched
+                isCrouching = true;
             }
             else
             {
@@ -219,14 +244,11 @@ public class HorrorPlayerController : MonoBehaviour
             isCrouching = wantsToCrouch;
         }
 
-        // Smoothly adjust CharacterController height and center
         float targetHeight = isCrouching ? crouchHeight : standingHeight;
-        float previousHeight = controller.height;
 
         controller.height = Mathf.Lerp(controller.height, targetHeight, Time.deltaTime * crouchTransitionSpeed);
         controller.center = new Vector3(0f, controller.height * 0.5f, 0f);
 
-        // Smoothly adjust the base eye height of the camera
         float targetCamY = isCrouching ? crouchingCameraY : standingCameraY;
         currentCameraBaseY = Mathf.Lerp(currentCameraBaseY, targetCamY, Time.deltaTime * crouchTransitionSpeed);
     }
@@ -254,13 +276,10 @@ public class HorrorPlayerController : MonoBehaviour
             rawInput.Normalize();
         }
 
-        // Determine if the player is allowed to sprint:
-        // Must be holding LeftShift, not crouching, moving forward/sideways, AND estaPersecucio must be true.
         bool holdingSprint = Input.GetKey(KeyCode.LeftShift);
         bool isMovingForward = rawInput.y > 0.1f;
         bool canSprint = estaPersecucio && holdingSprint && !isCrouching && isMovingForward;
-        //print(canSprint);
-        // Determine active MovementState and target speed
+
         float targetSpeed = walkSpeed;
         if (isCrouching)
         {
@@ -283,17 +302,13 @@ public class HorrorPlayerController : MonoBehaviour
             targetSpeed = 0f;
         }
 
-        // Smooth the input vector to create heavy acceleration and deceleration (inertia)
         Vector2 targetVelocity = rawInput * targetSpeed;
         currentInputVector = Vector2.SmoothDamp(currentInputVector, targetVelocity, ref smoothInputVelocity, movementSmoothTime);
 
-        // Calculate world-space horizontal movement
         Vector3 moveDirection = (transform.right * currentInputVector.x) + (transform.forward * currentInputVector.y);
 
-        // Apply grounding and gravity
         if (controller.isGrounded && verticalVelocity < 0f)
         {
-            // Small downward force keeps the player snapped to stairs/slopes without bouncing
             verticalVelocity = -2.5f;
         }
         else
@@ -303,7 +318,6 @@ public class HorrorPlayerController : MonoBehaviour
 
         moveDirection.y = verticalVelocity;
 
-        // Execute movement
         controller.Move(moveDirection * Time.deltaTime);
     }
 
@@ -316,7 +330,6 @@ public class HorrorPlayerController : MonoBehaviour
 
         if (!enableHeadBob || !controller.isGrounded)
         {
-            // Smoothly reset headbob if disabled or airborne
             headBobOffset = Vector3.Lerp(headBobOffset, Vector3.zero, Time.deltaTime * 8f);
             cameraPivot.localPosition = new Vector3(0f, currentCameraBaseY, 0f) + headBobOffset;
             return;
@@ -325,7 +338,6 @@ public class HorrorPlayerController : MonoBehaviour
         float frequency = idleBobFrequency;
         float amplitude = idleBobAmplitude;
 
-        // Check actual horizontal speed so bobbing doesn't play if walking into a wall
         float horizontalSpeed = new Vector3(controller.velocity.x, 0f, controller.velocity.z).magnitude;
 
         if (horizontalSpeed > 0.2f)
@@ -348,11 +360,9 @@ public class HorrorPlayerController : MonoBehaviour
             }
         }
 
-        // Advance timer and calculate vertical (Y) and horizontal (X) sway
         bobTimer += Time.deltaTime * frequency;
 
         float bobY = Mathf.Sin(bobTimer) * amplitude;
-        // Horizontal sway runs at half the vertical frequency (left foot, right foot)
         float bobX = Mathf.Cos(bobTimer * 0.5f) * (amplitude * 0.6f);
 
         Vector3 targetOffset = new Vector3(bobX, bobY, 0f);
@@ -362,36 +372,79 @@ public class HorrorPlayerController : MonoBehaviour
     }
 
     /// <summary>
-    /// Gestiona l'encesa/apagada de la llanterna i la recarrega.
+    /// Handles raycasting to pick up items into the right hand, or dropping the currently held item.
+    /// </summary>
+    private void HandleItemInteraction()
+    {
+        if (Input.GetKeyDown(interactKey))
+        {
+            if (currentHeldItem != null)
+            {
+                DropHeldItem();
+            }
+            else
+            {
+                TryPickupItem();
+            }
+        }
+    }
+
+    private void TryPickupItem()
+    {
+        Transform rayOrigin = playerCamera != null ? playerCamera.transform : cameraPivot;
+        if (rayOrigin == null) return;
+
+        if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit, interactionDistance, interactionLayerMask, QueryTriggerInteraction.Ignore))
+        {
+            PickupItem item = hit.collider.GetComponentInParent<PickupItem>();
+            if (item != null && !item.IsHeld && rightHandHoldPoint != null)
+            {
+                currentHeldItem = item;
+                currentHeldItem.OnPickup(rightHandHoldPoint);
+            }
+        }
+    }
+
+    private void DropHeldItem()
+    {
+        if (currentHeldItem == null) return;
+
+        Transform rayOrigin = playerCamera != null ? playerCamera.transform : cameraPivot;
+        Vector3 dropDir = rayOrigin != null ? rayOrigin.forward : transform.forward;
+
+        currentHeldItem.OnDrop(dropDir);
+        currentHeldItem = null;
+    }
+
+    /// <summary>
+    /// Controls the dynamo flashlight. Prevents recharging if the right hand is holding an item.
     /// </summary>
     private void HandleDynamoInput()
     {
         if (flashlight == null) return;
 
-        // 1. Encenem/Apaguem (Toggle) utilitzant el mètode públic
-        if (Input.GetKeyDown(KeyCode.F))
+        // 1. Si tenim un objecte a la mà, bloquegem la recàrrega
+        if (currentHeldItem != null)
+        {
+            flashlight.inputRechargeHeld = false;
+
+            if (Input.GetKeyDown(toggleLightKey))
+            {
+                flashlight.ToggleLightInput();
+            }
+            return;
+        }
+
+        // 2. Comprovem si s'està mantenint R o Clic Esquerre per recarregar
+        bool pressingRecharge = Input.GetKey(rechargeKey);
+        bool pressingLeftClick = allowLeftClickRecharge && Input.GetMouseButton(0);
+
+        flashlight.inputRechargeHeld = (pressingRecharge || pressingLeftClick);
+
+        // 3. Només permetem encendre/apagar amb F si NO s'està recarregant
+        if (!flashlight.inputRechargeHeld && Input.GetKeyDown(toggleLightKey))
         {
             flashlight.ToggleLightInput();
         }
-
-        // 2. Llegim l'estat dels botons de recàrrega (R o Click esquerre)
-        bool pressingRecharge = Input.GetKey(KeyCode.R);
-        bool pressingLeftClick = allowLeftClickRecharge && Input.GetMouseButton(0);
-
-        // 3. Li diem a DynamoFlashlight si estem mantenint apretat
-        // (La llanterna s'encarregarà de fer tota la seva lògica original a dins del seu propi Update)
-        flashlight.inputRechargeHeld = (pressingRecharge || pressingLeftClick);
     }
 }
-
-/// <summary>
-/// Placeholder class so HorrorPlayerController compiles immediately.
-/// Remove this class when you create your own separate DynamoFlashlight.cs script!
-/// </summary>
-/*public class DynamoFlashlight : MonoBehaviour
-{
-    public virtual void RechargeDynamo()
-    {
-        Debug.Log("Cranking Dynamo Flashlight! (+Battery)");
-    }
-}*/

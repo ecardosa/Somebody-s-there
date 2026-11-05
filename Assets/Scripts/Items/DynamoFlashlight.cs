@@ -107,6 +107,11 @@ public class DynamoFlashlight : MonoBehaviour
                 spotlight.intensity = maxIntensity * (currentBatteryPercentage / 100f);
             }
 
+            if (efectesVolumetrics != null)
+            {
+                efectesVolumetrics.SetActive(true);
+            }
+
             if (currentBatteryPercentage >= 100f)
             {
                 StopRecharging();
