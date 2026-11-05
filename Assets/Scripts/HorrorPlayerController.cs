@@ -128,6 +128,15 @@ public class HorrorPlayerController : MonoBehaviour
     [Tooltip("Read-only reference to the currently held item.")]
     public PickupItem currentHeldItem;
 
+    [Header("Crosshair (Punt central rodó)")]
+    public bool showCrosshair = true;
+    public float crosshairSize = 5f;
+    public float hoverCrosshairSize = 10f;
+    public Color normalCrosshairColor = new Color(1f, 1f, 1f, 0.6f);
+    public Color hoverCrosshairColor = new Color(1f, 0.85f, 0.2f, 0.95f);
+
+    private Texture2D crosshairTexture;
+
     // --- Internal Private Variables ---
     private CharacterController controller;
 
@@ -374,35 +383,75 @@ public class HorrorPlayerController : MonoBehaviour
     /// <summary>
     /// Handles raycasting to pick up items into the right hand, or dropping the currently held item.
     /// </summary>
+
+    private PickupItem currentHoveredItem;
+
+    /// <summary>
+    /// Comprova si apuntem a un objecte per ressaltar-lo i gestiona la tecla E per agafar/deixar.
+    /// </summary>
     private void HandleItemInteraction()
     {
+        UpdateHoveredItem();
+
         if (Input.GetKeyDown(interactKey))
         {
             if (currentHeldItem != null)
             {
                 DropHeldItem();
             }
-            else
+            else if (currentHoveredItem != null)
             {
-                TryPickupItem();
+                PickUpHoveredItem();
             }
         }
     }
 
-    private void TryPickupItem()
+    private void UpdateHoveredItem()
     {
+        // Si ja tenim la mà ocupada, no ressaltem cap altre objecte
+        if (currentHeldItem != null)
+        {
+            ClearHoveredItem();
+            return;
+        }
+
         Transform rayOrigin = playerCamera != null ? playerCamera.transform : cameraPivot;
         if (rayOrigin == null) return;
 
         if (Physics.Raycast(rayOrigin.position, rayOrigin.forward, out RaycastHit hit, interactionDistance, interactionLayerMask, QueryTriggerInteraction.Ignore))
         {
             PickupItem item = hit.collider.GetComponentInParent<PickupItem>();
-            if (item != null && !item.IsHeld && rightHandHoldPoint != null)
+            if (item != null && !item.IsHeld)
             {
-                currentHeldItem = item;
-                currentHeldItem.OnPickup(rightHandHoldPoint);
+                if (currentHoveredItem != item)
+                {
+                    ClearHoveredItem();
+                    currentHoveredItem = item;
+                    currentHoveredItem.SetHighlight(true);
+                }
+                return;
             }
         }
+
+        ClearHoveredItem();
+    }
+
+    private void ClearHoveredItem()
+    {
+        if (currentHoveredItem != null)
+        {
+            currentHoveredItem.SetHighlight(false);
+            currentHoveredItem = null;
+        }
+    }
+
+    private void PickUpHoveredItem()
+    {
+        if (currentHoveredItem == null || rightHandHoldPoint == null) return;
+
+        currentHeldItem = currentHoveredItem;
+        ClearHoveredItem();
+        currentHeldItem.OnPickup(rightHandHoldPoint);
     }
 
     private void DropHeldItem()
@@ -446,5 +495,51 @@ public class HorrorPlayerController : MonoBehaviour
         {
             flashlight.ToggleLightInput();
         }
+    }
+
+    private void OnGUI()
+    {
+        if (!showCrosshair || currentHeldItem != null) return;
+
+        if (crosshairTexture == null)
+        {
+            crosshairTexture = CreateCircleTexture(64);
+        }
+
+        bool isHovering = currentHoveredItem != null;
+        float size = isHovering ? hoverCrosshairSize : crosshairSize;
+        GUI.color = isHovering ? hoverCrosshairColor : normalCrosshairColor;
+
+        float centerX = (Screen.width - size) * 0.5f;
+        float centerY = (Screen.height - size) * 0.5f;
+
+        GUI.DrawTexture(new Rect(centerX, centerY, size, size), crosshairTexture);
+        GUI.color = Color.white;
+    }
+
+    /// <summary>
+    /// Genera una textura circular amb les vores suavitzades.
+    /// </summary>
+    private Texture2D CreateCircleTexture(int resolution)
+    {
+        Texture2D tex = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+
+        float center = (resolution - 1) * 0.5f;
+        float radius = resolution * 0.5f - 1f;
+
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
+                // Suavitza la vora exterior perquè es vegi perfectament rodó
+                float alpha = Mathf.Clamp01(radius - dist + 0.5f);
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+            }
+        }
+
+        tex.Apply();
+        return tex;
     }
 }
