@@ -259,7 +259,7 @@ public class HorrorPlayerController : MonoBehaviour
         bool holdingSprint = Input.GetKey(KeyCode.LeftShift);
         bool isMovingForward = rawInput.y > 0.1f;
         bool canSprint = estaPersecucio && holdingSprint && !isCrouching && isMovingForward;
-
+        //print(canSprint);
         // Determine active MovementState and target speed
         float targetSpeed = walkSpeed;
         if (isCrouching)

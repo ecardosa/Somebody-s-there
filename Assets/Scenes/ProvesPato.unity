@@ -302,7 +302,7 @@ MonoBehaviour:
   cameraSmoothTime: 0.06
   maxLookUpAngle: 75
   maxLookDownAngle: -80
-  toggleCrouch: 1
+  toggleCrouch: 0
   crouchKey: 306
   standingHeight: 1.8
   crouchHeight: 1
@@ -437,7 +437,7 @@ Transform:
   m_GameObject: {fileID: 298275932}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.35355, y: 0.24748, z: 0.35355}
+  m_LocalPosition: {x: 0.35355, y: 0.18, z: 0.35355}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
