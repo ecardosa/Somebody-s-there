@@ -68,7 +68,7 @@ public class DynamoFlashlight : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKey(rechargeKey))
+        /*if (Input.GetKey(rechargeKey))
         {
             if (!isRecharging && currentBatteryPercentage < 100f)
             {
@@ -84,7 +84,7 @@ public class DynamoFlashlight : MonoBehaviour
                 StopRecharging();
                 tempsPrementBoto = 0f; 
             }
-        }
+        }*/
 
         if (isRecharging)
         {
@@ -307,5 +307,39 @@ public class DynamoFlashlight : MonoBehaviour
             yield return new WaitForSeconds(0.2f);
         }
         isFlickering = false;
+    }
+
+    // --- NOUS MÈTODES PER AL CONTROLADOR ---
+
+    public void ToggleLight()
+    {
+        if (!isRecharging)
+        {
+            wantsToBeOn = !wantsToBeOn;
+        }
+    }
+
+    public void StartRecharging()
+    {
+        if (!isRecharging && currentBatteryPercentage < 100f)
+        {
+            isRecharging = true;
+            isFinishingCrank = false;
+            if (isOn) TurnOffLight();
+        }
+    }
+
+    public void StopRechargingManual() // Ho hem de dir diferent per no interferir amb el privat
+    {
+        if (isRecharging)
+        {
+            StopRecharging();
+            tempsPrementBoto = 0f;
+        }
+    }
+
+    public bool IsRecharging()
+    {
+        return isRecharging;
     }
 }
