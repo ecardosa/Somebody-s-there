@@ -15,6 +15,7 @@ public class DynamoFlashlight : MonoBehaviour
 
     /**Controls i referencies*/
     public Light spotlight;
+    public GameObject efectesVolumetrics;
     public KeyCode toggleKey = KeyCode.F;
     public KeyCode rechargeKey = KeyCode.R;//Mantenint apretat
 
@@ -60,6 +61,11 @@ public class DynamoFlashlight : MonoBehaviour
         {
             spotlight.enabled = false;
             spotlight.intensity = maxIntensity;
+        }
+
+        if (efectesVolumetrics != null)
+        {
+            efectesVolumetrics.SetActive(false);
         }
 
         if(crankTransform != null)
@@ -191,6 +197,8 @@ public class DynamoFlashlight : MonoBehaviour
         {
             spotlight.enabled = true;
         }
+
+        if (efectesVolumetrics != null) efectesVolumetrics.SetActive(true);
     }
 
     void TurnOffLight()
@@ -201,6 +209,8 @@ public class DynamoFlashlight : MonoBehaviour
         {
             spotlight.enabled = false;
         }
+
+        if (efectesVolumetrics != null) efectesVolumetrics.SetActive(false);
     }
 
     void DrainBattery()
@@ -281,7 +291,7 @@ public class DynamoFlashlight : MonoBehaviour
         }
     }
 
-        void HandleFlickering()
+    void HandleFlickering()
     {
         if (isFlickering)
         {
@@ -296,7 +306,9 @@ public class DynamoFlashlight : MonoBehaviour
             hasFlickered10= true;
         } else if (currentBatteryPercentage <= 5f && currentBatteryPercentage > 0f)
         {
-            spotlight.enabled = Mathf.PerlinNoise(Time.time * 15f, 0f) > 0.5f;
+            bool noiseState = Mathf.PerlinNoise(Time.time * 15f, 0f) > 0.5f;
+            spotlight.enabled = noiseState;
+            if (efectesVolumetrics != null) efectesVolumetrics.SetActive(noiseState);
         }
     }
 
@@ -307,8 +319,10 @@ public class DynamoFlashlight : MonoBehaviour
         for (int i = 0; i < flickerCount; i++)
         {
             spotlight.enabled = false;
+            if (efectesVolumetrics != null) efectesVolumetrics.SetActive(false);
             yield return new WaitForSeconds(0.15f);
             spotlight.enabled = true;
+            if (efectesVolumetrics != null) efectesVolumetrics.SetActive(true);
             yield return new WaitForSeconds(0.2f);
         }
         isFlickering = false;
