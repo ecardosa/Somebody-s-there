@@ -366,4 +366,8 @@ public class DynamoFlashlight : MonoBehaviour
     {
         return isRecharging;
     }
+
+    // --- PROPIETATS PER A LA IA DE LES RATES ---
+    public bool IsLightActive => spotlight != null && spotlight.enabled && (isOn || isRecharging);
+    public float BatteryRatio => Mathf.Clamp01(currentBatteryPercentage / 100f);
 }

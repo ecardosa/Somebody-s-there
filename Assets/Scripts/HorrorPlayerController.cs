@@ -465,6 +465,21 @@ public class HorrorPlayerController : MonoBehaviour
         currentHeldItem = null;
     }
 
+    public bool IsCrouching => currentState == MovementState.Crouching;
+
+    /// <summary>
+    /// Cridat per una rata quan ataca el jugador i li roba l'objecte de la mà dreta.
+    /// </summary>
+    public PickupItem StealHeldItem()
+    {
+        if (currentHeldItem == null) return null;
+
+        PickupItem stolenItem = currentHeldItem;
+        currentHeldItem = null;
+        stolenItem.transform.SetParent(null);
+        return stolenItem;
+    }
+
     /// <summary>
     /// Controls the dynamo flashlight. Prevents recharging if the right hand is holding an item.
     /// </summary>
