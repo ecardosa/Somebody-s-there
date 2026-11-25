@@ -11,7 +11,7 @@ public class DynamoFlashlight : MonoBehaviour
     //Temps necessari de recarrega del 0 al 100%
     public float timeToRecharge = 5f;
     /**Intensitat maxima de la llanterna*/
-    public float maxIntensity = 1000f;
+    public float maxIntensity = 100f;
 
     /**Controls i referencies*/
     public Light spotlight;
@@ -51,7 +51,9 @@ public class DynamoFlashlight : MonoBehaviour
     private float tempsPrementBoto = 0f;
     public float velocitatManivelaInicial = 150f; 
     public float velocitatManivelaMaxima = 600f;
-    private float velocitatActualManivela = 0f;   
+    private float velocitatActualManivela = 0f;
+
+    public bool volemEfectesVol;   
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -107,7 +109,7 @@ public class DynamoFlashlight : MonoBehaviour
                 spotlight.intensity = maxIntensity * (currentBatteryPercentage / 100f);
             }
 
-            if (efectesVolumetrics != null)
+            if (efectesVolumetrics != null && volemEfectesVol)
             {
                 efectesVolumetrics.SetActive(true);
             }
@@ -203,7 +205,7 @@ public class DynamoFlashlight : MonoBehaviour
             spotlight.enabled = true;
         }
 
-        if (efectesVolumetrics != null) efectesVolumetrics.SetActive(true);
+        if (efectesVolumetrics != null && volemEfectesVol) efectesVolumetrics.SetActive(true);
     }
 
     void TurnOffLight()
@@ -313,7 +315,7 @@ public class DynamoFlashlight : MonoBehaviour
         {
             bool noiseState = Mathf.PerlinNoise(Time.time * 15f, 0f) > 0.5f;
             spotlight.enabled = noiseState;
-            if (efectesVolumetrics != null) efectesVolumetrics.SetActive(noiseState);
+            if (efectesVolumetrics != null && volemEfectesVol) efectesVolumetrics.SetActive(noiseState);
         }
     }
 
@@ -327,7 +329,7 @@ public class DynamoFlashlight : MonoBehaviour
             if (efectesVolumetrics != null) efectesVolumetrics.SetActive(false);
             yield return new WaitForSeconds(0.15f);
             spotlight.enabled = true;
-            if (efectesVolumetrics != null) efectesVolumetrics.SetActive(true);
+            if (efectesVolumetrics != null && volemEfectesVol) efectesVolumetrics.SetActive(true);
             yield return new WaitForSeconds(0.2f);
         }
         isFlickering = false;
